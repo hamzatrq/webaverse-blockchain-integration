@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Test Project</title>
+  <!-- Required meta tags -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+  <style>
+    body {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: center;
+      align-content: flex-start;
+      overflow: auto;
+      flex-direction: column;
+    }
+
+    .btn {
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="btn btn-primary btn-lg" id="mint" href="#" role="button"> Mint </a>
+  <a class="btn btn-primary btn-lg" id="drop" href="#" role="button"> Drop </a>
+  <a class="btn btn-primary btn-lg" id="redeem" href="#" role="button"> Redeem </a>
+
+  <script src="https://cdn.jsdelivr.net/npm/babel-polyfill/dist/polyfill.min.js"></script>
+  <!-- Optional JavaScript -->
+
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+  <script type="module">
+
+    import { ethers } from "ethers";
+    import config from "./config";
+    import { NFT } from "./NFT";
+
+    async function init(provider) {
+      let { chainId } = await provider.getNetwork();
+      let NFTContractAddress;
+      let WebaverseContractAddress;
+      if (chainId == 1338) {
+        NFTContractAddress = config.sidechain.NFTContractAddress;
+        WebaverseContractAddress = config.sidechain.WebaverseAddress;
+      } else if (chainId == 137) {
+        NFTContractAddress = config.maticmainnet.NFTContractAddress;
+        WebaverseContractAddress = config.maticmainnet.WebaverseAddress;
+      } else if (chainId == 4) {
+        NFTContractAddress = config.rinkeby.NFTContractAddress;
+        WebaverseContractAddress = config.rinkeby.WebaverseAddress;
+      } else {
+        throw new Error("Unsupported network: " + chainId);
+      }
+
+      const nft = new NFT(provider, NFTContractAddress, WebaverseContractAddress);
+      return nft;
+    }
+
+    window.onload = async () => {
+      await window.ethereum.enable();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const nft = await init(provider);
+
+      document.getElementById("mint").addEventListener("click", async () => {
+        try {
+          const balance = 1;
+          const tokenURI = "QmRpBLJEG6HkqokZhHAAKfBsJpGB58d3rMqFPHBCsH5VDv.jpg";
+          await nft.mint(balance, tokenURI, "0x01");
+        } catch (err) {
+          console.log(err);
+        }
+      });
+
+      document.getElementById("drop").addEventListener("click", async () => {
+        const tIDVal = prompt("Enter token id to drop", '1');
+        const tokenId = Number.parseInt(tIDVal);
+        const balance = 1;
+        const expiry = Math.round(new Date().getTime() / 1000) + 1000;
+        try {
+          const voucher = await nft.dropNFT(tokenId, balance, expiry);
+          console.log(voucher);
+          localStorage.setItem("latestvoucher", JSON.stringify(voucher));
+        } catch (err) {
+          console.log(err);
+        }
+      });
+
+      document.getElementById("redeem").addEventListener("click", async () => {
+        try {
+          const voucher = JSON.parse(localStorage.getItem("latestvoucher"));
+          console.log(voucher);
+          await nft.redeemVoucher(voucher);
+        } catch (err) {
+          console.log(err);
+        }
+      });
+    };
+
+  </script>
+</body>
+
+</html>
